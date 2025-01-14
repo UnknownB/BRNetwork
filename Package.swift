@@ -5,6 +5,10 @@ import PackageDescription
 
 let package = Package(
     name: "BRNetwork",
+    platforms: [
+        .iOS(.v15),
+        .macOS(.v10_14)
+    ],
     products: [
         .library(name: "BRNetwork", targets: ["BRNetwork"]),
     ],
