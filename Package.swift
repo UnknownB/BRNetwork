@@ -12,8 +12,11 @@ let package = Package(
     products: [
         .library(name: "BRNetwork", targets: ["BRNetwork"]),
     ],
+    dependencies: [
+        .package(url: "https://github.com/UnknownB/BRFoundation", branch: "main")
+    ],
     targets: [
-        .target(name: "BRNetwork"),
+        .target(name: "BRNetwork", dependencies: ["BRFoundation"]),
         .testTarget(name: "BRNetworkTests", dependencies: ["BRNetwork"]),
     ]
 )
