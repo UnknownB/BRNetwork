@@ -24,6 +24,9 @@ public enum BRNetworkError: Error, CustomDebugStringConvertible {
 
     /// 資料解析錯誤
     case decoding(Error)
+    
+    /// 缺少必要欄位
+    case missingKey(String)
 
     /// 其他未分類錯誤
     case unknown(Error)
@@ -41,6 +44,8 @@ public enum BRNetworkError: Error, CustomDebugStringConvertible {
             return "[UnexpectedResponse] Response is not HTTPURLResponse"
         case let .decoding(error):
             return "[DecodingError] \(error)"
+        case let .missingKey(key):
+            return "[MissingKey] \(key)"
         case let .unknown(error):
             return "[UnknownError] \(error)"
         }
