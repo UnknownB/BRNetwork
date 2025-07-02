@@ -35,8 +35,9 @@ final class ReqResService {
                 BRLog.net.error("[Network] response error:\(error.localizedDescription)")
                 BRLog.net.error("[Network] response:\(response)")
             },
-            enrichMessage: { statusCode, data in
-                try? ErrorResponse.fromJSONData(data).error
+            onstatusError: { response in
+                let decoded = try? ErrorResponse.fromJSONData(response.data)
+                return (nil, decoded?.error)
             }
         ))
         let data = try JSONDecoder().decode(T.self, from: response.data)

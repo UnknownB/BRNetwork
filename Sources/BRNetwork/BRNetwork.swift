@@ -11,12 +11,12 @@ import Foundation
 public struct BRRequestOptions {
     let retryMax: Int
     let onFailure: BRNetwork.onFailureHandler?
-    let enrichMessage: ((Int, Data) -> String?)?
+    let onstatusError: BRNetwork.onStatusError?
     
-    public init(retryMax: Int = 3, onFailure: BRNetwork.onFailureHandler? = nil, enrichMessage: ((Int, Data) -> String?)? = nil) {
+    public init(retryMax: Int = 3, onFailure: BRNetwork.onFailureHandler? = nil, onstatusError: BRNetwork.onStatusError? = nil) {
         self.retryMax = retryMax
         self.onFailure = onFailure
-        self.enrichMessage = enrichMessage
+        self.onstatusError = onstatusError
     }
 }
 
@@ -57,6 +57,7 @@ public class BRNetwork {
     
     public typealias operationHandler = () async throws -> (Data, URLResponse)
     public typealias onFailureHandler = ((Error, BRResponse) -> Void)
+    public typealias onStatusError = (BRResponse) -> (errorCode: Int?, message: String?)
     private let session: URLSession
     
     
@@ -79,7 +80,7 @@ public class BRNetwork {
     ///             - 制定最多嘗試次數，預設為 3 次
     ///         - onFailure:
     ///             - 請求失敗時的 closure (可選)
-    ///         - enrichMessage:
+    ///         - onStatusError:
     ///             - 發生 server 端錯誤時，用來解析 error message 的 closure (可選)
     /// - 回傳
     ///     - `BRResponse` 此次網路請求的完整資訊，可以在 Log 中印出完整 request 與 response 資訊
@@ -115,8 +116,10 @@ public class BRNetwork {
     ///                 BRLog.net.error("[Network] response error:\(error.localizedDescription)")
     ///                 BRLog.net.error("[Network] response:\(response)")
     ///             },
-    ///             enrichMessage: { statusCode, data in
-    ///                 try? ErrorResponse.fromJSONData(data).error
+    ///             onstatusError: { response in
+    ///                 let decoded = try? ErrorResponse.fromJSONData(response.data)
+    ///                 // 回傳 errorCode、errorMessage，沒有時可填入 nil
+    ///                 return (nil, decoded?.error)
     ///             }
     ///         ))
     ///         let data = try JSONDecoder().decode(T.self, from: response.data)
@@ -195,8 +198,8 @@ public class BRNetwork {
         switch myResponse.statusCode {
         case 200..<300: break
         default:
-            let message = try? options.enrichMessage?(myResponse.statusCode, myResponse.data)
-            throw BRNetworkError.server(statusCode: myResponse.statusCode, data: myResponse.data, message: message)
+            let decoded = options.onstatusError?(myResponse)
+            throw BRNetworkError.server(response: myResponse, errorCode: decoded?.errorCode, message: decoded?.message)
         }
     }
     
