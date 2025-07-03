@@ -9,14 +9,14 @@ import Foundation
 
 
 public struct BRRequestOptions {
-    let retryMax: Int
+    let retryMax: UInt
+    let onStatusError: BRNetwork.onStatusError?
     let onFailure: BRNetwork.onFailureHandler?
-    let onstatusError: BRNetwork.onStatusError?
     
-    public init(retryMax: Int = 3, onFailure: BRNetwork.onFailureHandler? = nil, onstatusError: BRNetwork.onStatusError? = nil) {
+    public init(retryMax: UInt = 3, onFailure: BRNetwork.onFailureHandler? = nil, onStatusError: BRNetwork.onStatusError? = nil) {
         self.retryMax = retryMax
         self.onFailure = onFailure
-        self.onstatusError = onstatusError
+        self.onStatusError = onStatusError
     }
 }
 
@@ -78,10 +78,10 @@ public class BRNetwork {
     ///     - options:
     ///         - retryMax:
     ///             - 制定最多嘗試次數，預設為 3 次
-    ///         - onFailure:
-    ///             - 請求失敗時的 closure (可選)
     ///         - onStatusError:
-    ///             - 發生 server 端錯誤時，用來解析 error message 的 closure (可選)
+    ///             - 發生 errorStatusCode 時，用來解析 ErrorResponse 訊息 (可選)
+    ///         - onFailure:
+    ///             - 拋出錯誤前的 closure，可以觀看錯誤內容，以及更改錯誤 (可選)
     /// - 回傳
     ///     - `BRResponse` 此次網路請求的完整資訊，可以在 Log 中印出完整 request 與 response 資訊
     ///
@@ -157,13 +157,17 @@ public class BRNetwork {
                 let context = BRResponseContext(data: data, urlResponse: response, startTime: startTime, retry: retry)
                 try validateResponse(myResponse, options: options, context: context)
                 return myResponse
-            } catch {
+            } catch var error {
                 if retry < options.retryMax {
                     retry += 1
                 } else {
                     let duration = Date().timeIntervalSince(startTime)
                     myResponse.duration = duration
                     myResponse.retry = retry
+                    if myResponse.isErrorStatusCode {
+                        let decoded = options.onStatusError?(myResponse)
+                        error = BRNetworkError.server(response: myResponse, errorCode: decoded?.errorCode, message: decoded?.message)
+                    }
                     try options.onFailure?(error, myResponse)
                     throw error
                 }
@@ -195,11 +199,8 @@ public class BRNetwork {
         myResponse.retry = context.retry
         myResponse.statusCode = httpURLResponse.statusCode
         myResponse.responseHeaders = httpURLResponse.allHeaderFields.br.toStringDictionary()
-        switch myResponse.statusCode {
-        case 200..<300: break
-        default:
-            let decoded = options.onstatusError?(myResponse)
-            throw BRNetworkError.server(response: myResponse, errorCode: decoded?.errorCode, message: decoded?.message)
+        if myResponse.isErrorStatusCode {
+            throw BRNetworkError.server(response: myResponse, errorCode: nil, message: nil)
         }
     }
     
