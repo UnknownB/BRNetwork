@@ -25,6 +25,11 @@ public class BRResponse: CustomStringConvertible {
     public var data: Data = Data()
     
     
+    public var isErrorStatusCode: Bool {
+        !(200..<300).contains(statusCode)
+    }
+    
+    
     public init(request: BRRequest) {
         self.request = request
     }
