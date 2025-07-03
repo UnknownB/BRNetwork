@@ -13,10 +13,10 @@ public struct BRRequestOptions {
     let onStatusError: BRNetwork.onStatusError?
     let onFailure: BRNetwork.onFailureHandler?
     
-    public init(retryMax: UInt = 3, onFailure: BRNetwork.onFailureHandler? = nil, onStatusError: BRNetwork.onStatusError? = nil) {
+    public init(retryMax: UInt = 3, onStatusError: BRNetwork.onStatusError? = nil, onFailure: BRNetwork.onFailureHandler? = nil) {
         self.retryMax = retryMax
-        self.onFailure = onFailure
         self.onStatusError = onStatusError
+        self.onFailure = onFailure
     }
 }
 
