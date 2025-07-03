@@ -56,8 +56,8 @@ private struct BRResponseContext {
 public class BRNetwork {
     
     public typealias operationHandler = () async throws -> (Data, URLResponse)
-    public typealias onFailureHandler = ((Error, BRResponse) -> Void)
     public typealias onStatusError = (BRResponse) -> (errorCode: Int?, message: String?)
+    public typealias onFailureHandler = ((Error, BRResponse) throws -> Void)
     private let session: URLSession
     
     
@@ -164,7 +164,7 @@ public class BRNetwork {
                     let duration = Date().timeIntervalSince(startTime)
                     myResponse.duration = duration
                     myResponse.retry = retry
-                    options.onFailure?(error, myResponse)
+                    try options.onFailure?(error, myResponse)
                     throw error
                 }
             }
