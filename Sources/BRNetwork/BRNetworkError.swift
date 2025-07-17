@@ -9,7 +9,7 @@ import Foundation
 import BRFoundation
 
 
-public enum BRNetworkError: Error, CustomDebugStringConvertible {
+public enum BRNetworkError: Error, LocalizedError {
     /// App 端錯誤，例如 request 構造錯誤、JSON encode 問題
     case client(underlying: Error)
     
@@ -32,7 +32,7 @@ public enum BRNetworkError: Error, CustomDebugStringConvertible {
     case unknown(Error)
     
     
-    public var debugDescription: String {
+    public var errorDescription: String? {
         switch self {
         case let .client(error):
             return "[ClientError] \(error)"
