@@ -17,7 +17,7 @@ public enum BRNetworkError: Error, LocalizedError {
     case network(URLError)
     
     /// 收到 Response，但 statusCode 非 2xx，並且附帶錯誤資料
-    case server(response: BRResponse, errorCode: Int?, message: String?)
+    case server(response: BRResponse, errorCode: Int?, message: String)
 
     /// 回傳的 response 非 HTTPURLResponse，應該是嚴重異常
     case unexpectedResponse
@@ -39,7 +39,7 @@ public enum BRNetworkError: Error, LocalizedError {
         case let .network(urlError):
             return "[NetworkError] \(urlError)"
         case let .server(response, errorCode, message):
-            return "[ServerError] \(response.statusCode) – errorCode: \(errorCode ?? -1), \(message ?? "No message")"
+            return message
         case .unexpectedResponse:
             return "[UnexpectedResponse] Response is not HTTPURLResponse"
         case let .decoding(error):
