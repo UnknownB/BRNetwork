@@ -38,7 +38,7 @@ public enum BRNetworkError: Error, LocalizedError {
             return "[ClientError] \(error)"
         case let .network(urlError):
             return "[NetworkError] \(urlError)"
-        case let .server(response, errorCode, message):
+        case let .server(_, errorCode, message):
             return message ?? "unkonwn error, code: \(errorCode?.description ?? "nil")"
         case .unexpectedResponse:
             return "[UnexpectedResponse] Response is not HTTPURLResponse"

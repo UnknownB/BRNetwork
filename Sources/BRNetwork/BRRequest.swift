@@ -5,7 +5,6 @@
 //  Created by BR on 2024/12/4.
 //
 
-import Foundation
 import BRFoundation
 
 
@@ -30,7 +29,7 @@ public class BRRequest: CustomStringConvertible {
     }
         
     public enum BodyType {
-        case none, json, raw
+        case none, json, raw, multipart
     }
     
     public let url: URL
@@ -41,6 +40,7 @@ public class BRRequest: CustomStringConvertible {
     public var headers: [String: String] = [:]
     public var queryParams: [String: String] = [:]
     public var bodyParams: [String: Any] = [:]
+    public var uploadParts: [BRUploadPart] = []
     public var timeout: TimeInterval = 30
     
     
@@ -48,6 +48,22 @@ public class BRRequest: CustomStringConvertible {
         self.url = url
         self.method = method
         self.bodyType = bodyType
+    }
+    
+    
+    private func createMultipartBody(parts: [BRUploadPart], boundary: String) -> Data {
+        var body = Data()
+        
+        for part in parts {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"\(part.key)\"; filename=\"\(part.filename)\"\r\n".data(using: .utf8)!)
+            body.append("Content-Type: \(part.mimeType)\r\n\r\n".data(using: .utf8)!)
+            body.append(part.data)
+            body.append("\r\n".data(using: .utf8)!)
+        }
+        
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        return body
     }
     
     
@@ -68,6 +84,11 @@ public class BRRequest: CustomStringConvertible {
             let raws = bodyParams.map { "\($0.key)=\($0.value)" }.joined(separator: "&")
             request.httpBody = raws.data(using: .utf8)
             request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        case .multipart:
+            let boundary = "Boundary-\(UUID().uuidString)"
+            request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+            request.httpBody = createMultipartBody(parts: uploadParts, boundary: boundary)
+        
         case .none: break
         }
         return request
@@ -102,6 +123,11 @@ public class BRRequest: CustomStringConvertible {
         description += "    Body: \n"
         bodyParams.forEach { key, value in
             description += "        \(key): \(value)\n"
+        }
+        
+        description += "    Ports: \n"
+        uploadParts.forEach { value in
+            description += "        \(value)\n"
         }
         return description
     }
@@ -177,6 +203,20 @@ public extension BRRequest {
     
     
     @discardableResult
+    func uploadPart(_ part: BRUploadPart) -> Self {
+        uploadParts.append(part)
+        return self
+    }
+
+    
+    @discardableResult
+    func uploadParts(_ parts: [BRUploadPart]) -> Self {
+        uploadParts.append(contentsOf: parts)
+        return self
+    }
+    
+    
+    @discardableResult
     func name(_ name: String) -> Self {
         self.name = name
         return self
@@ -218,6 +258,11 @@ public extension BRRequest {
     
     static func postForm(_ url: URL) -> BRRequest {
         BRRequest(url, method: .post, bodyType: .raw)
+    }
+    
+    
+    static func upload(_ url: URL) -> BRRequest {
+        BRRequest(url, method: .post, bodyType: .multipart)
     }
     
     
