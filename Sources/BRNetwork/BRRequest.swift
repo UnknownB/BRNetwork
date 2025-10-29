@@ -57,7 +57,7 @@ public class BRRequest: CustomStringConvertible {
         for part in parts {
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
             body.append("Content-Disposition: form-data; name=\"\(part.key)\"; filename=\"\(part.filename)\"\r\n".data(using: .utf8)!)
-            body.append("Content-Type: \(part.mimeType)\r\n\r\n".data(using: .utf8)!)
+            body.append("Content-Type: \(part.mimeType.rawValue)\r\n\r\n".data(using: .utf8)!)
             body.append(part.data)
             body.append("\r\n".data(using: .utf8)!)
         }
