@@ -209,12 +209,14 @@ public class BRNetwork {
         if options.useStatusCode {
             if myResponse.isErrorStatusCode {
                 let decoded = options.onCustomAPIResponseError?(myResponse)
-                throw BRNetworkError.server(response: myResponse, errorCode: decoded?.errorCode, message: decoded?.message)
+                let message = myResponse.request.onCustomErrorMessage?(decoded?.errorCode, decoded?.message) ?? decoded?.message
+                throw BRNetworkError.server(response: myResponse, errorCode: decoded?.errorCode, message: message)
             }
         } else {
             let decoded = options.onCustomAPIResponseError?(myResponse)
+            let message = myResponse.request.onCustomErrorMessage?(decoded?.errorCode, decoded?.message) ?? decoded?.message
             if myResponse.isErrorStatusCode || (decoded?.errorCode != nil && decoded?.errorCode != 0) {
-                throw BRNetworkError.server(response: myResponse, errorCode: decoded?.errorCode, message: decoded?.message)
+                throw BRNetworkError.server(response: myResponse, errorCode: decoded?.errorCode, message: message)
             }
         }
     }

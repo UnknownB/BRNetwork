@@ -42,6 +42,7 @@ public class BRRequest: CustomStringConvertible {
     public var bodyParams: [String: Any] = [:]
     public var uploadParts: [BRUploadPart] = []
     public var timeout: TimeInterval = 30
+    public var onCustomErrorMessage: ((Int?, String?) -> String?)?
     
     
     public init(_ url: URL, method: Method, bodyType: BodyType) {
@@ -233,6 +234,13 @@ public extension BRRequest {
     @discardableResult
     func bodyType(_ bodyType: BodyType) -> Self {
         self.bodyType = bodyType
+        return self
+    }
+    
+    
+    @discardableResult
+    func onCustomErrorMessage(_ closure: ((Int?, String?) -> String?)?) -> Self {
+        self.onCustomErrorMessage = closure
         return self
     }
     
