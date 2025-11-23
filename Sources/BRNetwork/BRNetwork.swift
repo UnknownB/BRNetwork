@@ -10,12 +10,14 @@ import Foundation
 
 public struct BRRequestOptions {
     let retryMax: UInt
-    let onStatusError: BRNetwork.onStatusError?
-    let onFailure: BRNetwork.onFailureHandler?
+    let useStatusCode: Bool
+    let onCustomAPIResponseError: BRNetwork.CustomAPIResponseError?
+    let onFailure: BRNetwork.FailureHandler?
     
-    public init(retryMax: UInt = 3, onStatusError: BRNetwork.onStatusError? = nil, onFailure: BRNetwork.onFailureHandler? = nil) {
+    public init(retryMax: UInt = 3, useStatusCode: Bool = true, onCustomAPIResponseError: BRNetwork.CustomAPIResponseError? = nil, onFailure: BRNetwork.FailureHandler? = nil) {
         self.retryMax = retryMax
-        self.onStatusError = onStatusError
+        self.useStatusCode = useStatusCode
+        self.onCustomAPIResponseError = onCustomAPIResponseError
         self.onFailure = onFailure
     }
 }
@@ -56,10 +58,11 @@ private struct BRResponseContext {
 public class BRNetwork {
     
     public typealias operationHandler = () async throws -> (Data, URLResponse)
-    public typealias onStatusError = (BRResponse) -> (errorCode: Int?, message: String?)
-    public typealias onFailureHandler = ((Error, BRResponse) throws -> Void)
-    private let session: URLSession
+    public typealias CustomAPIResponseError = (BRResponse) -> (errorCode: Int?, message: String?)
+    public typealias FailureHandler = ((Error, BRResponse) throws -> Void)
     
+    private let session: URLSession
+
     
     public init(session: URLSession = .shared) {
         self.session = session
@@ -78,7 +81,9 @@ public class BRNetwork {
     ///     - options:
     ///         - retryMax:
     ///             - 制定最多嘗試次數，預設為 3 次
-    ///         - onStatusError:
+    ///         - useStatusCode:
+    ///             - 值為 true 時 statusCode 2XX 即表示成功。值為 false 時 APIResponseErrorCode != 0 表示成功，預設為 true
+    ///         - onCustomAPIResponseError:
     ///             - 發生 errorStatusCode 時，用來解析 ErrorResponse 訊息 (可選)
     ///         - onFailure:
     ///             - 拋出錯誤前的 closure，可以觀看錯誤內容，以及更改錯誤 (可選)
@@ -112,14 +117,13 @@ public class BRNetwork {
     ///
     ///     func fetchAPI<T: Decodable>(_ request: BRRequest, as type: T.Type) async throws -> (BRResponse, T) {
     ///         let response = try await network.sendRequest(request, options: BRRequestOptions(
-    ///             onFailure: { error, response in
-    ///                 BRLog.net.error("[Network] response error:\(error.localizedDescription)")
-    ///                 BRLog.net.error("[Network] response:\(response)")
+    ///             onCustomAPIResponseError: { response in
+    ///                 let decoded = try? APIResponse.fromJSONData(response.data)
+    ///                 return (decoded?.errorCode, decoded?.errorMessage)
     ///             },
-    ///             onstatusError: { response in
-    ///                 let decoded = try? ErrorResponse.fromJSONData(response.data)
-    ///                 // 回傳 errorCode、errorMessage，沒有時可填入 nil
-    ///                 return (nil, decoded?.error)
+    ///             onFailure: { error, response in
+    ///                 #BRLog(.network, .error, "[Network] response error: \(error)")
+    ///                 #BRLog(.network, .error, "[Network] response: \n\(response)")
     ///             }
     ///         ))
     ///         let data = try JSONDecoder().decode(T.self, from: response.data)
@@ -202,9 +206,16 @@ public class BRNetwork {
         myResponse.statusCode = httpURLResponse.statusCode
         myResponse.responseHeaders = httpURLResponse.allHeaderFields.br.toStringDictionary()
         
-        if myResponse.isErrorStatusCode {
-            let decoded = options.onStatusError?(myResponse)
-            throw BRNetworkError.server(response: myResponse, errorCode: decoded?.errorCode, message: decoded?.message)
+        if options.useStatusCode {
+            if myResponse.isErrorStatusCode {
+                let decoded = options.onCustomAPIResponseError?(myResponse)
+                throw BRNetworkError.server(response: myResponse, errorCode: decoded?.errorCode, message: decoded?.message)
+            }
+        } else {
+            let decoded = options.onCustomAPIResponseError?(myResponse)
+            if myResponse.isErrorStatusCode || (decoded?.errorCode != nil && decoded?.errorCode != 0) {
+                throw BRNetworkError.server(response: myResponse, errorCode: decoded?.errorCode, message: decoded?.message)
+            }
         }
     }
     
