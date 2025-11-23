@@ -157,17 +157,19 @@ public class BRNetwork {
                 let context = BRResponseContext(data: data, urlResponse: response, startTime: startTime, retry: retry)
                 try validateResponse(myResponse, options: options, context: context)
                 return myResponse
-            } catch var error {
+            } catch {
+                let duration = Date().timeIntervalSince(startTime)
+                myResponse.duration = duration
+                myResponse.retry = retry
+                
+                if case BRNetworkError.server(response: _, errorCode: _, message: _) = error {
+                    try options.onFailure?(error, myResponse)
+                    throw error
+                }
+                
                 if retry < options.retryMax {
                     retry += 1
                 } else {
-                    let duration = Date().timeIntervalSince(startTime)
-                    myResponse.duration = duration
-                    myResponse.retry = retry
-                    if myResponse.isErrorStatusCode {
-                        let decoded = options.onStatusError?(myResponse)
-                        error = BRNetworkError.server(response: myResponse, errorCode: decoded?.errorCode, message: decoded?.message)
-                    }
                     try options.onFailure?(error, myResponse)
                     throw error
                 }
@@ -199,8 +201,10 @@ public class BRNetwork {
         myResponse.retry = context.retry
         myResponse.statusCode = httpURLResponse.statusCode
         myResponse.responseHeaders = httpURLResponse.allHeaderFields.br.toStringDictionary()
+        
         if myResponse.isErrorStatusCode {
-            throw BRNetworkError.server(response: myResponse, errorCode: nil, message: nil)
+            let decoded = options.onStatusError?(myResponse)
+            throw BRNetworkError.server(response: myResponse, errorCode: decoded?.errorCode, message: decoded?.message)
         }
     }
     
